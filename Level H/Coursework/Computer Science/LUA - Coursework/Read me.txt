@@ -1,0 +1,30 @@
+The webpage folder contains a php webpage which would have been used to display the 
+sesnor data from the nodeMCU, however the connection between the webpage and device couldnt be made. The server issue folder has lua files for the code that couldn't connect to the php of the webpage.
+
+The lua file is a file to be run on the nodemcu:
+open ESPlorer:
+1) open the file named ESPlorer
+2) double click the file labeled ESPlorer executeable
+
+
+1) open the file in ESPlorer by clicking open and selecting the lua file.
+2) plug the nodemcu into the computer using the micro usb cable
+3) click the refresh icon on the right pane of ESPlorer this will select the port for nodemcu
+4) click open and the RTS icons
+5) push the red switch on the nodemcu forward and back once; the nodemcu blue ligth will come on then go off as you push the switch back. the device has now reset
+6) click upload and select the lua file
+7) once uploaded click run
+8) once the nocemcu connects to the wifi its ip address will appear
+9) type the ip address into a browser and the webpage conatined in the nodemcu server will appear
+10) both the nodemcu and the device to view the webpage must beon the same wifi network.
+
+It connect to the wifi connection that the user allows it to connet to, by altering the SSID and PASSWORD to the wifi credentials the user would like the nodemcu to connect to.
+
+The nodemcu collects the sensor data every 10 seconds
+
+The nodemcu displays a webpage using javascript to display its sensors values. From here the LED ligth can be turned on and off as well the the three colours the LED can show (RED GREEN BLUE). There is also a button to refresh the guages with current values.
+
+This code is all my work
+
+Callum Owen-Bridge
+15002504

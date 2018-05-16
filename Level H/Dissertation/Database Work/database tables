@@ -1,0 +1,176 @@
+CREATE DATABASE health_database;
+
+USE health_database;
+
+CREATE TABLE surgery (
+surgeryID  INTEGER NOT NULL AUTO_INCREMENT,
+name  VARCHAR(30) NOT NULL,
+addressL1  VARCHAR(100) NOT NULL,
+addressL2  VARCHAR(100) NOT NULL,
+postcode  VARCHAR(7) NOT NULL,
+contactNumber BIGINT,
+
+PRIMARY KEY (surgeryID)
+
+);
+
+CREATE TABLE health_care_professional (
+gmc INTEGER (7) NOT NULL UNIQUE,
+forename VARCHAR(30) NOT NULL,
+surname VARCHAR(30) NOT NULL,
+gender char NOT NULL,
+addressL1 VARCHAR(50) NOT NULL,
+addressL2 VARCHAR(50) NOT NULL,
+postcode VARCHAR(7) NOT NULL,
+contactNumber BIGINT,
+emailAddress VARCHAR(255),
+
+PRIMARY KEY (gmc)
+
+);
+
+CREATE TABLE surgery_HCP_relation (
+surgeryID INTEGER NOT NULL,
+gmc INTEGER NOT NULL,
+
+FOREIGN KEY (surgeryID) REFERENCES surgery(surgeryID)
+ON UPDATE CASCADE ON DELETE RESTRICT,
+FOREIGN KEY (gmc) REFERENCES health_care_professional(gmc)
+ON UPDATE CASCADE ON DELETE RESTRICT
+
+);
+
+CREATE TABLE patient (
+uID INTEGER NOT NULL UNIQUE AUTO_INCREMENT,
+nhsNumber BIGINT NOT NULL UNIQUE,
+forename VARCHAR(30) NOT NULL,
+surname VARCHAR(30) NOT NULL,
+dateOfBirth DATE NOT NULL,
+gender CHAR NOT NULL,
+addressL1 VARCHAR(50) NOT NULL,
+addressL2 VARCHAR(50) NOT NULL,
+postcode VARCHAR(7) NOT NULL,
+contactNumber BIGINT,
+emailAddress VARCHAR(255),
+
+PRIMARY KEY (uID)
+
+);
+ALTER TABLE patient AUTO_INCREMENT = 1001;
+
+CREATE TABLE surgery_Patient_relation (
+surgeryID INTEGER NOT NULL,
+uID INTEGER NOT NULL,
+
+FOREIGN KEY (surgeryID) REFERENCES surgery(surgeryID)
+ON UPDATE CASCADE ON DELETE RESTRICT,
+FOREIGN KEY (uID) REFERENCES patient(uID)
+ON UPDATE CASCADE ON DELETE RESTRICT
+
+);
+
+CREATE TABLE patient_HCP_relation (
+uID INTEGER NOT NULL,
+gmc INTEGER NOT NULL,
+dateOfRegistration DATE NOT NULL,
+
+FOREIGN KEY (uID) REFERENCES patient(uID)
+ON UPDATE CASCADE ON DELETE RESTRICT,
+FOREIGN KEY (gmc) REFERENCES health_care_professional(gmc)
+ON UPDATE CASCADE ON DELETE RESTRICT
+
+);
+
+CREATE TABLE patient_log (
+logID INTEGER NOT NULL AUTO_INCREMENT,
+dateValue DATE NOT NULL,
+uID INTEGER NOT NULL,
+
+PRIMARY KEY (logID),
+FOREIGN KEY (uID) REFERENCES patient(uID)
+ON UPDATE CASCADE ON DELETE RESTRICT
+
+);
+
+CREATE TABLE monitor_data (
+id INTEGER NOT NULL AUTO_INCREMENT, 
+logID INTEGER NOT NULL,
+timeValue VARCHAR(9) NOT NULL,
+temperature FLOAT,
+emg INTEGER,
+ecg FLOAT,
+airFlow INTEGER,
+skinConductance FLOAT,
+skinResistance FLOAT,
+skinConductanceVoltage FLOAT,
+beatsPerMinute INTEGER,
+bloodOxygen TINYINT(101),
+
+PRIMARY KEY (id),
+FOREIGN KEY (logID) REFERENCES patient_log(logID)
+ON UPDATE CASCADE ON DELETE RESTRICT
+
+);
+
+CREATE TABLE authentication(
+id INTEGER NOT NULL AUTO_INCREMENT,
+username VARCHAR(20) NOT NULL UNIQUE,
+password VARCHAR(255) NOT NULL,
+dateCreated DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+PRIMARY KEY (id)
+
+);
+
+CREATE TABLE patient_authentication (
+id INTEGER NOT NULL AUTO_INCREMENT,
+username VARCHAR(20) NOT NULL,
+uID INTEGER NOT NULL,
+
+PRIMARY KEY (id),
+FOREIGN KEY (username) REFERENCES authentication(username)
+ON UPDATE CASCADE ON DELETE RESTRICT,
+
+FOREIGN KEY (uID) REFERENCES patient(uID)
+ON UPDATE CASCADE ON DELETE RESTRICT
+
+);
+
+CREATE TABLE hcp_authentication (
+id INTEGER NOT NULL AUTO_INCREMENT,
+username VARCHAR(20) NOT NULL,
+gmc INTEGER NOT NULL,
+
+PRIMARY KEY (id),
+FOREIGN KEY (username) REFERENCES authentication(username)
+ON UPDATE CASCADE ON DELETE RESTRICT,
+
+FOREIGN KEY (gmc) REFERENCES health_care_professional(gmc)
+ON UPDATE CASCADE ON DELETE RESTRICT
+
+);
+
+
+CREATE USER 'healthCareProfessional'@'localhost' IDENTIFIED BY 'hcpHOPEuniversity#2018';
+CREATE USER 'patient'@'localhost' IDENTIFIED BY 'patientHOPEuniversity#2018';
+CREATE USER 'admin'@'localhost' IDENTIFIED BY 'adminHOPEuniversity#2018';
+
+GRANT ALL ON health_database.* TO 'admin'@'localhost';
+
+GRANT SELECT ON health_database.surgery TO 'healthCareProfessional'@'localhost';
+GRANT SELECT ON health_database.health_care_professional TO 'healthCareProfessional'@'localhost';
+GRANT SELECT ON health_database.surgery_HCP_relation TO 'healthCareProfessional'@'localhost';
+GRANT SELECT ON health_database.patient TO 'healthCareProfessional'@'localhost';
+GRANT SELECT ON health_database.surgery_Patient_relation TO 'healthCareProfessional'@'localhost';
+GRANT SELECT ON health_database.patient_HCP_relation TO 'healthCareProfessional'@'localhost';
+GRANT SELECT, INSERT, DELETE ON health_database.patient_log TO 'healthCareProfessional'@'localhost';
+GRANT SELECT, INSERT, DELETE ON health_database.monitor_data TO 'healthCareProfessional'@'localhost';
+
+
+
+GRANT SELECT ON health_database.surgery TO 'patient'@'localhost';
+GRANT SELECT ON health_database.patient TO 'patient'@'localhost';
+GRANT SELECT ON health_database.patient_authentication TO 'patient'@'localhost';
+GRANT SELECT ON health_database.patient_HCP_relation TO 'patient'@'localhost';
+GRANT SELECT, INSERT ON health_database.patient_log TO 'patient'@'localhost';
+GRANT SELECT, INSERT ON health_database.monitor_data TO 'patient'@'localhost';

@@ -1,0 +1,759 @@
+<!doctype html> 
+<html lang="en"> 
+<head> 
+	<meta charset="UTF-8" />
+	<title>Dragon Invasion</title>
+	<script type="text/javascript" src="library/jquery.js"></script>
+	<script type="text/javascript" src="library/phaser.js"></script>
+    <style type="text/css">
+        body 
+        {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+
+	<script type="text/javascript">
+		var game = new Phaser.Game($(window).width(), $(window).height(), Phaser.AUTO, '', { preload: preload, create: create, update: update});
+		
+
+		function preload() 
+		{
+
+			// preloads images ready to be used by game
+			game.load.image('background', 'assets/images/background.png');
+			game.load.image('controls', 'assets/images/controls.png');
+			game.load.image('pause', 'assets/images/pause.png');
+			game.load.image('mute', 'assets/images/mute.png');
+			game.load.image('creditButton', 'assets/images/creditButton.png');
+			game.load.image('bullet', 'assets/images/playerbullet.png');
+			game.load.image('enemybullet', 'assets/images/enemybullet.png');
+			game.load.image('health', 'assets/images/health.png');
+			game.load.image('weaponBoost', 'assets/images/weapon_boost.png');
+			game.load.image('creditPage', 'assets/images/creditPage.png');
+
+			// preloads spritesheets ready to be used by game
+			game.load.spritesheet('enemy1', 'assets/images/brown_dragon.png', 96, 98);
+			game.load.spritesheet('player', 'assets/images/rincewind.png', 32, 48);
+		    game.load.spritesheet('bunker', 'assets/images/house.png', 1024, 1056, 4);
+		    game.load.spritesheet('explosion', 'assets/images/explosion.png', 200, 200, 6);
+
+		    // preloads audio ready to be used by game
+		    game.load.audio('explosion', 'assets/audio/sfx/explosion.mp3'); 
+		    game.load.audio('fireball', 'assets/audio/sfx/fireball.mp3'); 
+		    game.load.audio('wand','assets/audio/sfx/wand.wav');
+
+			// keeps game in full view
+		    game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
+		    // aligns page
+   			game.scale.pageAlignHorizontally = true;
+    		game.scale.pageAlignVertically = true;
+    		// sets game size to specfific parameters
+    		game.scale.setGameSize(1920, 1080);
+		}
+
+
+		var arrowKeys;
+		var platforms;
+		var score = 0;
+		var scoreText;
+		var level = 1;
+		var levelText;
+		var wonText;
+		var endGameText;
+		var lostText;
+		var lostText_2;
+		var livesText;
+		var weaponBoostpowerUPText;
+		var healthPowerUPText;
+		var deathScoreLossText;
+		var creditsPage;
+
+		var enemy;
+		var enemy1;
+		// an increase reduces the speed of the enemy by increasing the time taken 
+		//(window.innerWidth * 3.7)  3.7 is a ratio created from 1920 : 7000
+		var enemy_movement_time_x = 1920*3.7; 
+		var enemy_movement_time_y = 100000;
+		var enemyLives = [];
+		var enemyDead = false;
+		var enemydeadCounter = 24;
+
+		var lives;
+		var life;
+		var player;
+		
+		var bulletTime = 0;
+		var playerBullets;
+		var playerbullet;
+		var fireRate = 1900;
+		var enemyBullets;
+		var enemybullet;
+		var enemyBulletTime = 0;
+
+		var powerUps;
+		var health;
+		var weaponBoost;
+		var clickCounter = 0;
+
+		var bunker;
+		var bunkers;
+		var bunker_x_pos = 0;
+		var hitCounter = 0;
+		var pauseKey;
+		var death;
+
+		var explosion;
+		var fireball;
+		var wand;
+
+
+		// the create function is used to reate objects, audio and images
+		function create() 
+		{
+			// starts arcade physics engine for game to use
+			game.physics.startSystem(Phaser.Physics.ARCADE);
+
+			// creates a platform that the player stands on
+			platforms = game.add.group();
+			platforms.enableBody = true;
+
+			// uses an image to create a platform for the player to stand on 
+			var ground = platforms.create(0, game.world.height - 20, 'ground');
+			ground.scale.setTo($(window).width(), 1);
+			ground.body.immovable = true;
+
+			// creates game background
+			var background = game.add.sprite(0, 0, 'background');
+			background.width = game.width;
+			background.height = game.height;
+
+			// displays control image ontop of background image
+			var controls = game.add.sprite(1300, 0, 'controls');
+			controls.scale.setTo(0.4);
+
+			// displays credits, pause and mute buttom ontop of background image
+			var pause = game.add.button(925, 10, 'pause', togglePause, this, 2, 1, 0);
+			pause.scale.setTo(0.05);
+
+			var mute = game.add.button(1100, 10, 'mute', toggleMute, this, 2, 1, 0);
+			mute.scale.setTo(0.05);
+
+			var creditButton = game.add.button(750, 10, 'creditButton', toggleCredits, this, 2, 1, 0);
+			creditButton.scale.setTo(0.05);
+
+			//    CREATES BUNKERS 
+			bunkers = game.add.group();
+			bunkers.enableBody = true;
+			
+			createBunkers();
+
+
+			//    CREATES PLAYER BULLETS
+			playerBullets = game.add.group();
+			playerBullets.enableBody = true;
+			game.physics.arcade.enable(playerBullets);
+
+			// creates 20 bullets for the player to use
+			var x;
+			for(var i = 0; i < 20; i++)
+			{
+				x = playerBullets.create(0,0, 'bullet');
+				x.name = 'bullet' + i;
+				x.exists = false;
+				x.visible = false;
+				x.checkWorldBounds = true;
+				x.events.onOutOfBounds.add(resetPlayerBullet, this);
+			}
+
+
+			//    CREATES ENEMY BULLETS
+			enemyBullets = game.add.group();
+			enemyBullets.enableBody = true;
+			game.physics.arcade.enable(enemyBullets);
+
+			// creates 5 enemy bullets
+			var y;
+			for(var i = 0; i < 5; i++)
+			{
+				y = enemyBullets.create(100, 100, 'enemybullet');
+				y.name = 'enemybullet' + i;
+				y.exists = false;
+				y.visible = false;
+				y.checkWorldBounds = true;
+				y.events.onOutOfBounds.add(resetEnemyBullet, this);
+			}
+
+			//    CREATE POWERUPS 
+			createPowerUps();
+
+
+			//    CREATE PLAYER 
+			createPlayer();
+
+			
+			//    CREATE ENEMY 
+			createEnemy();
+
+			//    CREATES GAME TEXT
+			livesText = game.add.text((game.world.width * 0.25), (game.world.height * 0.02), 'Lives: ', {fontSize: '25px', fill: '#AACC00'});
+			scoreText = game.add.text((game.world.width * 0.02), (game.world.height * 0.02),' Score: 0', {fontSize: '25px', fill: '#AACC00'});
+			levelText = game.add.text((game.world.width * 0.15), (game.world.height * 0.02),' Level: 1', {fontSize: '25px', fill: '#AACC00'});
+			lostText = game.add.text(500, 100, ' GAME OVER Click to Restart', {fontSize: '50px', fill: '#DDBB00'});
+			lostText.visible = false;
+
+			lostText_2 = game.add.text(100, 140, ' GAME OVER, the dragons reached Wizard Village Click to Restart', {fontSize: '50px', fill: '#DDBB00'});
+			lostText_2.visible = false;
+
+			endGameText = game.add.text(200, game.world.centerY,' You have destroyed all the dragons and protected the Wizard village, Click to restart', {fontSize: '25px', fill: '#DDBB00'});
+			endGameText.visible = false;
+
+			//    CONTROLS
+
+			// allows control of keyboard arrow keys
+			arrowKeys = game.input.keyboard.createCursorKeys();	
+			// allows control of keyboard spacebar 	
+			game.input.keyboard.addKeyCapture([ Phaser.Keyboard.SPACEBAR]);	
+
+			//maps function toggleMute to key m to allow the player to mute audio
+			muteKey = this.input.keyboard.addKey(Phaser.Keyboard.M);
+   			muteKey.onDown.add(toggleMute, this);
+
+   			//maps function togglePause to key p to allow the player to pause game
+  			pauseKey = this.input.keyboard.addKey(Phaser.Keyboard.P);
+   			pauseKey.onDown.add(togglePause, this);
+
+			//    AUDIO
+
+			soundFX = game.add.audio('sfx');
+			soundFX.allowMultiple = false;
+
+			// creates game audio
+			fireball = game.add.audio('fireball');
+			explosion = game.add.audio('explosion');
+			wand = game.add.audio('wand');
+
+			creditsPage = game.add.sprite(100, 100, 'creditPage');
+			creditsPage.scale.setTo(0.9);
+			creditsPage.visible = false;
+		}
+
+
+		// the update function is a function which continuously updates, whilst tthe game is playing
+		function update() 
+		{
+			// collision detection between player and plaform, stops player form falling out of game view
+			var hitPlatform = game.physics.arcade.collide(player, platforms);
+			// collision detection between player and health power up, calls a function to collect health power up
+			game.physics.arcade.overlap(player, health, collectHealth, null, this);
+			// collision detection between player and weapon power up, calls a function to collect weapon boost
+			game.physics.arcade.overlap(player, weaponBoost, collectWeaponBoost, null, this);
+			// collision detection between player bullet and enemy, calls a function to kill enemy 
+			game.physics.arcade.overlap(playerBullets, enemy, enemyCollision, null, this);
+			// collision detection between player buellet and bunker, calls a function to cause damage to bunkers
+			game.physics.arcade.overlap(playerBullets, bunkers, bunker_Collision, null, this);
+			// collision detection between player and enemy bullets, calls fucntion to kill player
+			game.physics.arcade.overlap(enemyBullets, player, playerCollision, null, this);
+			// collision detection between enemy bullets and bunker, calls function to cause damage to bunkers
+			game.physics.arcade.overlap(enemyBullets, bunkers, bunker_Collision, null, this);
+			// collision detection between player and bunkers
+			game.physics.arcade.overlap(bunkers, player, hitBunker, null, this);
+			// collision detection between bunkers and enemy, calls function which ends the game 
+			game.physics.arcade.overlap(bunkers, enemy, dragonsReachBunker, null, this);
+
+			// sets player movement speed when stood still
+			player.body.velocity.x = 0;
+
+			// controls player using arrow key, left key is used to move player left
+			// plays animation for player
+			if(arrowKeys.left.isDown)
+			{
+				player.body.velocity.x = -250;
+				player.animations.play('left');
+			}
+
+			// controls player using arrow key, right key is used to move player right
+			// plays animation for player
+			else if (arrowKeys.right.isDown)
+			{
+				player.body.velocity.x = 250;
+				player.animations.play('right');
+			}
+
+			// plays animation for player
+			else
+			{
+				player.animations.play('playerMovement');
+			}
+
+			// allows player to jump using the up arrow key
+			if(arrowKeys.up.isDown && player.body.touching.down && hitPlatform)
+			{
+				player.body.velocity.y = -250;
+			}
+
+			// allows player to shoot using spacebar
+			if(game.input.keyboard.isDown(Phaser.Keyboard.SPACEBAR))
+			{
+				playerBullet();
+			}
+
+			game.input.onDown.add(playerBullet, this);
+			
+
+
+			// allows enemies to shoot after a certain time
+			if(game.time.now > enemyBulletTime)
+			{
+				enemyBullet();
+			}
+
+
+		}
+
+		// creates enemies and their movement
+		function createEnemy()
+		{
+			enemy = game.add.group();
+			enemy.enableBody = true;
+			game.physics.arcade.enable(enemy);
+
+			// creates 24 enemies
+			// creates 4 rows of enemies
+			for(var y = 120; y<=480; y +=120)
+			{
+				// creates 6 columns of enemies
+				for(var x = 150; x <= 900; x +=150)
+				{
+					enemy1 = enemy.create(x, y, 'enemy1');
+					//enemy1.frame = 0;                                                                                                                      /*  is this needed */
+					//enemy1.scale.setTo(1);                                                                                                                 /*  is this needed */
+					enemy1.animations.add('movement', [0, 1, 2, 3], 2, true);// adds movement animation
+					enemy1.play('movement'); // plays movement animation
+					enemy1.body.moves = false; // stops enemy from moving from set position 
+				}
+			}
+
+			// resets enemy body postition to x = 0 and y = 0
+			enemy.x = 0;
+			enemy.y = 0;
+
+			// increases enemy x postion and redcues it,  (100) is how ofetn they move left and right
+			var tweenX = game.add.tween(enemy).to( { x: (game.world.width - 1000)}, enemy_movement_time_x, Phaser.Easing.Linear.None, true, 0, 100, true); 
+			// increases enemy y position, make them appear as though they are moving down the screen
+			var tweenY = game.add.tween(enemy).to( { y: (game.world.height - 400)}, enemy_movement_time_y, Phaser.Easing.Linear.None, true); 
+		}
+
+		// creates the bunkers 
+		function createBunkers()
+		{
+
+			bunker_x_pos = game.world.width / 5;
+			// creates 4 bunkers
+			for(var x = 1; x < 5; x++)
+			{			
+				bunker = bunkers.create(bunker_x_pos * x, game.world.height - 260, 'bunker');
+				game.physics.arcade.enable(bunker);
+				bunker.body.immovable = true; // prevents bunker from moving
+				bunker.scale.setTo(0.15); // scales down bunker image size
+			}
+			
+		}
+
+		// creates player
+		function createPlayer()
+		{
+
+			lives = game.add.group(); // creates player lives
+			player = game.add.sprite(game.world.width - 200, game.world.height - 150, 'player'); // adds player to game
+			game.physics.arcade.enable(player); // adds physics to player
+			player.scale.setTo(1.5);
+			player.body.dynamic = true; // allows player to move
+
+			player.body.bounce.y = 0.2; // player bounces when landing 
+			player.body.gravity.y = 300; // controls player fall and jump speed
+			player.body.collideWorldBounds = true;
+
+			// adds animation to player
+			player.animations.add('playerMovement', [0, 1, 2, 3], 5, true);
+			player.animations.add('left', [4, 5, 6, 7], 10, true);
+			player.animations.add('right', [8, 9, 10, 11], 10, true);
+
+			// creates 3 lives for player and adds image to game 
+			for (var x = 3; x < 6; x++)
+			{
+				life = lives.create((game.world.width * 0.25) + (x*30), 0,'player');
+			}
+
+		    player.inputEnabled = true;
+       		player.input.enableDrag(true);
+      	    player.events.onDragStart.add(selectPlayer, this);
+      	    player.events.onDragStop.add(releasePlayer, this);
+		}
+
+		function selectPlayer(sprite, pointer) {
+	    }
+	 
+	    function releasePlayer(sprite, pointer) {
+	    }
+
+		// creates death animaition for player and enemy
+		function createDeathAnimation(x, y)
+		{
+			death = game.add.sprite(x, y, 'explosion'); // adds explosion animatin to the body 
+			death.animations.add('deathExplosion', [0, 1, 2, 3, 4, 5], 8);
+			death.animations.play('deathExplosion', 10, false, true);
+			explosion.play(); // plays explosion audio
+		}
+
+		// creates power ups
+		function createPowerUps()
+		{
+			powerUps = game.add.group();
+			powerUps.enableBody = true;
+		}
+
+
+
+
+		// creating bullets for player
+		function playerBullet() 
+		{
+			// creates player bullet after certain time has passed
+			if (game.time.now > bulletTime)
+			{
+				playerbullet = playerBullets.getFirstExists(false);
+
+				if(playerbullet)
+				{
+					playerbullet.reset(player.x, player.y - 20); // releases bullet from player body position
+					playerbullet.body.velocity.y = -250;                                                                  /*  is this needed */
+					bulletTime = game.time.now + fireRate; // allwos for control of bullet speed
+					wand.play(); // plays wand audio
+				}
+			}		
+		}
+
+        // creating bullets for enemies
+		function enemyBullet()
+		{
+			enemybullet = enemyBullets.getFirstExists(false);
+			enemyLives.length = 0;
+
+        	// put every living enemy in an array
+    		enemy.forEachAlive(function(enemy){enemyLives.push(enemy);});
+
+			if (enemybullet && enemyLives.length > 0)
+   			{
+		        var random = game.rnd.integerInRange(0, enemyLives.length-1); // to release bullet from random enemy
+
+		        // randomly select one of the enemy body
+		        var shooter = enemyLives[random];
+		        // And fire the bullet from chosen enemy
+		        enemybullet.reset(shooter.body.x, shooter.body.y);
+
+		        game.physics.arcade.moveToObject(enemybullet, player, 120); // moves enemy bullet to player position
+		        enemyBulletTime = game.time.now + 2000; // prevents continuous enemy bullet firing
+		        fireball.play(); // plays fireball audio
+		    }
+		}
+
+		// removes bullet from game
+		function resetPlayerBullet(playerbullet)
+		{
+			playerbullet.kill();
+		}
+
+
+		// removes bullet from game
+		function resetEnemyBullet(enemybullet)
+		{
+			enemybullet.kill();
+		}
+
+
+
+
+		// removes collided enemy from game when player bullet collides with it 
+		// increments score when enemy is hit
+		function enemyCollision(playerBullet, enemy)
+		{
+			playerBullet.kill(); // removes player bullet from game
+			enemy.kill(); // removes hit enemy frokm game 
+			createDeathAnimation(enemy.body.x, enemy.body.y); // plays death animation and audio, at enemy body
+
+			score += 10;
+			scoreText.text = 'Score: ' + score; // displays and incremenmts score when enemy dies
+
+			enemydeadCounter -=1; //reduces enemy counter 
+ 
+ 			// when enemy counter is 0 won text is displayed allowing player to progress the game
+			if (enemydeadCounter== 0)
+			{
+				wonText = game.add.text(500, game.world.centerY, ' YOU WON !   click to continue', {fontSize: '50px', fill: '#000000'});
+				game.input.onTap.addOnce(increase_intensity, this); // increases level intensity on click at the end of each level
+			}
+		}
+
+		// reduces lives of player when enemy bullet collides with player 
+		// displays lost text when player has no lives
+		function playerCollision(player, playerbullet)
+		{
+			playerbullet.kill();
+			createDeathAnimation(player.body.x, player.body.y);
+			
+
+			life = lives.getFirstAlive(); // gets life to remove from game
+		    if (life)
+		    {
+		        life.kill();
+		        score -= 20;
+		        scoreText.text = 'Score: ' + score;
+
+		        deathScoreLossText = game.add.text(100, 120,' -20 YOU HAVE BEEN HIT ', {fontSize: '30px', fill: '#CCFFAA'});
+		        game.time.events.add(2000, 
+					function() 
+					{  
+			       		game.add.tween(deathScoreLossText).to({alpha: 0}, 1500, Phaser.Easing.Linear.None, true);
+					}
+				, this);
+
+		    }
+
+			if (lives.countLiving() < 2) // displays power ups when on last life
+		    {
+		        displayHealthPowerUp();
+		        displayWeaponPowerup();
+		    }
+
+		    // When the player dies
+		    if (lives.countLiving() < 1)
+		    {
+		        player.kill();
+		        explosion.play(); // plays explosion audio
+		        lostText.visible = true; // makes lost text visible on game
+		        game.input.onTap.addOnce(restartGame, this); // allows user to restart game when lives are depleted
+		    }
+		}
+
+		// changes the bunker frame when an enemy bullet or player bullet collides with it 
+		function bunker_Collision(enemybullet, bunkers)
+		{
+			enemybullet.kill();
+			hitCounter += 1;
+
+			if ((hitCounter%4) == 0 && hitCounter == 4)
+			{
+				bunkers.frame = 1;
+			}
+
+			if ((hitCounter%6) == 0 && hitCounter == 6)
+			{
+				bunkers.frame = 2;
+			}
+
+			if ((hitCounter%9) == 0 && hitCounter == 9)
+			{
+				bunkers.frame = 3;
+			}
+
+			if ((hitCounter%11) == 0 && hitCounter == 11)
+			{
+				bunkers.kill();
+				hitCounter = 0;
+				explosion.play();
+			}
+		}
+		
+		// slows player down when travelling through bunker and prevents player form jumping up into bunker
+		function hitBunker(player, bunker)
+		{
+			player.body.velocity.y = 0;					
+		}
+
+		// a collsion between dragon and bunker, ends game and allows user to restart game on click
+		function dragonsReachBunker()
+		{			
+	        player.kill(); // removes player from game
+	        lives.kill(); // removes player loves from game
+			lostText_2.visible = true; // lost 2 text is visible 
+	        game.input.onTap.addOnce(restartGame, this); // allows player to restart game, click cllas function restart game
+		}
+
+
+
+
+		// displays health powerup
+		function displayHealthPowerUp()
+		{
+	        health = powerUps.create(30, game.world.height - 150, 'health');
+			game.physics.arcade.enable(health); // adds physics to allow for collisiopn detection
+		}
+
+		//creates a collectable for the player, increases health
+		function collectHealth(player, health)
+		{
+			health.kill(); // removes health power up from game 
+			life = lives.create((game.world.width * 0.25) + 180, 0,'player'); // increases player health by one and displays extra health image
+			healthPowerUPText = game.add.text(100, 120,' Health Accepted ', {fontSize: '50px', fill: '#CC0000'}); // notifies user that health has been accepted 
+			game.time.events.add(2000, 
+				function() 
+				{    
+					game.add.tween(healthPowerUPText).to({alpha: 0}, 1500, Phaser.Easing.Linear.None, true); // fades health text after 2 seconds
+				}
+				, this);
+		}
+
+		// displays weapon boost powerup
+		function displayWeaponPowerup()
+		{
+		    weaponBoost = powerUps.create(100, game.world.height - 150, 'weaponBoost');
+			game.physics.arcade.enable(powerUps);// removes health power up from game 
+		}
+
+		//creates a collectable for the player, increases weapon boost for a set time
+		function collectWeaponBoost(player, weaponBoost)
+		{
+			weaponBoost.kill();// removes weapon power up from game 
+			fireRate = 800; // reduces fire rate value to allow player to shoot faster
+			weaponBoostpowerUPText = game.add.text(550, 120,' Weapon Speed Boost Accepted ', {fontSize: '50px', fill: '#FFFF00'});// notifies user that weapon boost has been accepted 
+
+			game.time.events.add(2000, // fades weapon boost text after 2 seconds
+				function() 
+				{    
+					game.add.tween(weaponBoostpowerUPText).to({alpha: 0}, 1500, Phaser.Easing.Linear.None, true);
+				}
+				, this);
+
+			game.time.events.add(10000, weaponReset, this); // sets fire rate back to original value after 10 seconds
+		}
+
+		function weaponReset() // sets fire rate back to original value
+		{
+			fireRate = 1900;
+		}
+
+
+		
+		// function to restart the game, adds player, player lives, enemy, enemy bullets, bunker and powerups back to game
+		// resets variables back to orignal values
+		function restartGame()
+		{
+			// hides text from game
+			lostText.visible = false;
+			lostText_2.visible = false;
+			endGameText.visible = false;
+
+			powerUps.kill(); // removes powerups from game
+			enemy.kill(); // removes enemy from game 
+
+			enemy_movement_time_x = 1920*3.7;
+			enemy_movement_time_y =100000;			
+			enemydeadCounter = 24;
+			clickCounter = 0;
+			fireRate = 1900;
+			hitCounter = 0;
+			score = 0;
+			scoreText.text = 'Score: ' + score;
+			level = 1;
+			
+			createBunkers();
+			createEnemy();
+			enemyBullet();
+			createPlayer();
+			createPowerUps();
+
+		}
+
+
+		// creates 7 levels and increase in difficulty on eahc level, 8th click completes game
+		function increase_intensity()
+		{
+			clickCounter += 1; // increments click counter to select level
+			wonText.visible = false;
+			enemydeadCounter = 24; // resets the number of enemies back to 24 for next level
+			createBunkers(); // re-creates bunkers for each level
+			hitCounter = 0; // resets bunker hit counter to 0
+			level += 1;
+			levelText.text = 'Level: ' + level; // increases level value text
+
+			if(clickCounter == 1) // level 2
+			{
+				enemy_movement_time_x *= 0.8; // enemy movement speed in x increases  
+				hitCounter = 0;
+				createEnemy();
+				enemyBullet();
+				displayWeaponPowerup(); // display weapon powerup 
+			}
+
+			if(clickCounter == 2 || clickCounter == 3) // level 3 and 4
+			{
+				enemy_movement_time_x *= 0.8;
+				enemy_movement_time_y =70000; // enemy movement speed in y increases
+				hitCounter = 0;
+				createEnemy(); // re create enemy and their bullets
+				enemyBullet();
+			}
+
+			if(clickCounter == 4) // level 5
+			{
+				enemy_movement_time_x *= 0.8;
+				enemy_movement_time_y =50000;
+				hitCounter = 0;
+				createEnemy();
+				enemyBullet();
+				displayWeaponPowerup();
+			}
+
+			if(clickCounter == 5) // level 6
+			{				
+				enemy_movement_time_y =40000;
+				hitCounter = 0;
+				createEnemy();
+				enemyBullet();
+				displayWeaponPowerup();
+			}
+
+			if(clickCounter == 6) // level 7
+			{
+				fireRate = 800; // fire rate is increased 
+				enemy_movement_time_y =30000;
+				hitCounter = 0;
+				createEnemy();
+				enemyBullet();
+			}
+
+			if(clickCounter == 7) // level 8
+			{
+				endGameText = game.add.text((game.world.width)-500, (game.world.centerY),
+					' You have destroyed all the dragons and protected the Wizard village Click to restart', 
+					{fontSize: '25px', fill: '#DDBB00'}); // game complete text 
+
+				clickCounter = 0; // resets click counter to allow player to restart game from level 1
+				game.input.onTap.addOnce(restartGame, this); // allows player to restart game from level 1
+			}
+
+			
+		}
+
+		// toggles mute, mutes audio
+		function toggleMute()
+		{
+			game.sound.mute = (game.sound.mute) ? false : true;
+		}
+
+		// toggles game pause, pauses the whole game
+		function togglePause()
+		{
+			game.paused = (game.paused) ? false : true;
+		}
+
+		function toggleCredits()
+		{
+			game.paused = true;
+			creditsPage.visible =! creditsPage.visible;
+		}
+	</script>
+</body>
+</html>

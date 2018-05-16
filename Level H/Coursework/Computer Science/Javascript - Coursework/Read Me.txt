@@ -1,0 +1,71 @@
+To start server and play game:
+
+
+1) open Javascript - Coursework file
+
+2) double click OpenGame file, this starts nodeJS, a command window should open
+
+3) the game should start to run
+
+To close the server 
+
+1) press ctrl+C
+2) then type exit
+3) press enter
+
+
+
+If the program fails to open the game:
+1) close the opened windows
+2) open Javascript - Coursework file
+
+3) double click http-server, command promtp window should open
+4) note down the port number usually 8080
+5) open a browser and type in the url section 
+	 http://localhost:portnumber 
+example: http://localhost:8080
+6) press enter 
+7) select the link   Dragon_Invasion.html  and the game should start
+
+To open in a mobile device use the same steps above however, allow firewall access:
+1) in the browser type the address
+
+http://192.xxx.x.x:portnumber
+this can be found at the top of the nodejs command prompt the opens up 
+2) Select Dragon_Invasion and the game will start
+
+To close the server 
+1) press ctrl+C
+
+
+
+Character and dragon assets are from sources which allow re-use of their material. 
+References to the materials used is present in the credits in the game.
+
+All code is mine. I have looked at many examples to see how things work for example tweens and sprites,but this game is all my work.
+
+
+Controls:
+
+	Arrow keys: (UP)to jump (LEFT) to move left and (RIGHT) to move right 
+	
+	Spacebar: to shoot
+
+	Or 
+	
+	use touch cntrols on a touch screen device 
+	to move touch character and drag 
+	to shoot just tap 
+
+Goal is to reach the end go the game. 
+There are 7 levels increasing in difficulty.
+
+Each dragon death is worth 10 points however a player death deducts 20 points.
+Player has 3 lives to start with, but health power can increase health by one.
+Weapon power up which increases the player shoot speed for a short period of time.
+
+
+The browser window is able to resize, resizing the game as well
+The game has been tested and works in Safari, Chrome, Edge and Internet Explorer
+The game uses two libraries phaser and jquery
+The game is also touch capable and works on mobile devices
