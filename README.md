@@ -1,3 +1,3 @@
 # callumob
 
-this contains work i have created during my years at univeristy
+this contains work I have created during my years at univeristy
